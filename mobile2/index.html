@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M20 / M50 / 轻量化 / X62 车型配置系统（+30,000）</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:"Microsoft YaHei",sans-serif}
+body{background:#f5f7fa;padding:20px}
+.container{max-width:1400px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden}
+.header{background:#2c3e50;color:#fff;padding:20px}
+.header h2{color:#ffd700}
+.filter{padding:20px;background:#f8f9fa}
+.filter-group{margin-bottom:15px}
+.checkbox{display:flex;align-items:center;gap:6px;margin:5px 0}
+.option-group{background:#fff3cd;padding:12px;border-radius:6px;margin:10px 0}
+.car-card{border:1px solid #eee;border-radius:8px;padding:16px;margin-bottom:12px;cursor:pointer;transition:all 0.2s}
+.car-card:hover{border-color:#007bff;box-shadow:0 2px 8px rgba(0,123,255,0.1)}
+.price{color:#e53935;font-weight:bold;margin:6px 0}
+.final{color:#d9534f;font-size:17px;font-weight:bold}
+.info{margin:4px 0;color:#333}
+.label{display:inline-block;background:#eef4ff;color:#007bff;padding:2px 6px;border-radius:4px;font-size:12px;margin-right:4px;margin-bottom:4px}
+.label-center{background:#d1f0ff;color:#0066aa}
+.option-group input:disabled + span{color:#999;text-decoration:line-through}
+.empty{text-align:center;padding:40px;color:#999}
+button{padding:9px 20px;background:#007bff;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:8px}
+.btn-reset{background:#6c757d}
+.opt-total{font-size:16px;font-weight:bold;color:#d9534f;margin-top:8px}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:9999}
+.modal-content{background:#fff;width:90%;max-width:700px;max-height:80vh;overflow-y:auto;border-radius:12px;padding:24px;position:relative}
+.modal-close{position:absolute;top:16px;right:16px;font-size:24px;cursor:pointer;color:#999}
+.modal-close:hover{color:#000}
+.modal-line{margin:8px 0;font-size:14px;line-height:1.6}
+.modal-title{font-weight:bold;font-size:16px;margin:12px 0 6px}
+.series-tab{display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap}
+.series-tab button{background:#dee2e6;color:#333;padding:8px 16px;border-radius:5px;border:none;cursor:pointer}
+.series-tab button.active{background:#007bff;color:#fff}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>M20 / M50 / 轻量化 / X62 车型配置系统</h2>
+    <p>全系列官方价格表 · 所有价格已含 +30,000 · 严格按 Excel 维护</p>
+  </div>
+
+  <div class="filter">
+    <div class="series-tab">
+      <button class="active" onclick="switchSeries('M20')">M20 (EQ2068-X)</button>
+      <button onclick="switchSeries('M50')">M50 (EQ2063-X)</button>
+      <button onclick="switchSeries('M20L')">M20 轻量化</button>
+      <button onclick="switchSeries('X62')">X62 森消</button>
+    </div>
+
+    <div class="filter-group">
+      <strong>车型类型</strong>
+      <div class="checkbox"><input type="checkbox" id="f_chassis"> <span>底盘</span></div>
+      <div class="checkbox"><input type="checkbox" id="f_whole"> <span>整车</span></div>
+    </div>
+
+    <div class="filter-group">
+      <strong>驾驶室</strong>
+      <div class="checkbox"><input type="checkbox" id="f_cab1"> <span>单排</span></div>
+      <div class="checkbox"><input type="checkbox" id="f_cab2"> <span>双排</span></div>
+      <div class="checkbox"><input type="checkbox" id="f_cab3"> <span>双 (5座)</span></div>
+    </div>
+
+    <div class="filter-group">
+      <strong>筛选原厂标配</strong>
+      <div class="checkbox"><input type="checkbox" id="f_heat"> <span>燃油加热</span></div>
+      <div class="checkbox"><input type="checkbox" id="f_winch"> <span>绞盘</span></div>
+      <div class="checkbox"><input type="checkbox" id="f_gen"> <span>双发电机</span></div>
+      <div class="checkbox"><input type="checkbox" id="f_esc"> <span>ESC</span></div>
+      <div class="checkbox"><input type="checkbox" id="f_center"> <span>中央充放气</span></div>
+      <div class="checkbox"><input type="checkbox" id="f_night"> <span>夜视</span></div>
+      <div class="checkbox"><input type="checkbox" id="f_fcw"> <span>碰撞预警</span></div>
+      <div class="checkbox"><input type="checkbox" id="f_wade"> <span>涉水</span></div>
+    </div>
+
+    <div class="option-group">
+      <strong>选装配置 (按系列自动匹配)</strong>
+      <div id="opt_container"></div>
+      <div class="opt-total">选装总价：<span id="opt_total">0</span> 元</div>
+    </div>
+
+    <div style="margin-top:15px">
+      <button onclick="search()">筛选车型</button>
+      <button class="btn-reset" onclick="resetAll()">重置全部</button>
+    </div>
+  </div>
+
+  <div id="list" style="padding:20px"></div>
+</div>
+
+<div id="carModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ================= 全量车型数据 (+30,000) ================= */
+const allCars = {
+  /* ========== M20 (EQ2068-X) ========== */
+  M20: [
+      // M20 单排底盘 EQ2068FYY6J-X (40 个)
+          { model:"EQ2068FYY6J-X01", price:521800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068FYY6J-X02", price:544800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:1, winch:1, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、绞盘、燃油加热" },
+          { model:"EQ2068FYY6J-X03", price:527800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2068FYY6J-X04", price:544800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:1, winch:0, gen:0, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068FYY6J-X05", price:550800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068FYY6J-X06", price:559800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:1, winch:1, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、绞盘、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068FYY6J-X07", price:550800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068FYY6J-X09", price:538800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:1, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：绞盘、燃油加热" },
+          { model:"EQ2068FYY6J-X10", price:527800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2068FYY6J-X10B", price:527800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2068FYY6J-X12", price:544800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:1, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、绞盘、燃油加热" },
+          { model:"EQ2068FYY6J-X13", price:544800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:1, winch:1, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、绞盘、燃油加热" },
+          { model:"EQ2068FYY6J-X14", price:532800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:0, winch:0, gen:1, esc:1, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、ESC" },
+          { model:"EQ2068FYY6J-X15", price:529800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：燃油加热" },
+          { model:"EQ2068FYY6J-X17", price:538800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：绞盘、燃油加热" },
+          { model:"EQ2068FYY6J-X18", price:532800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:1, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、ESC" },
+          { model:"EQ2068FYY6J-X19", price:550800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068FYY6J-X20", price:559800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:1, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、绞盘、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068FYY6J-X21", price:575800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:1, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、中央充放气、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068FYY6J-X22", price:"待定", type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:1, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、中央充放气、碰撞预警、夜视、燃油加热、防风沙" },
+          { model:"EQ2068FYY6J-X23", price:520520, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068FYY6J-X24", price:555800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热、防风沙" },
+          { model:"EQ2068FYY6J-X25", price:546800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2068FYY6J-X25B", price:546800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2068FYY6J-X26", price:546600, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：双发电机、涉水" },
+          { model:"EQ2068FYY6J-X28", price:529800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：燃油加热" },
+          { model:"EQ2068FYY6J-X30", price:563800, type:"底盘", cab:"单排", tire:"MT轮胎", heat:1, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：绞盘、燃油加热、涉水" },
+          { model:"EQ2068FYY6J-X31", price:585800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:1, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、中央充放气、碰撞预警、夜视、燃油加热、防风沙" },
+          { model:"EQ2068FYY6J-X33", price:"待定", type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:1, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、中央充放气、碰撞预警、夜视、燃油加热、防风沙" },
+          { model:"EQ2068FYY6J-X34", price:541800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:1, gen:1, esc:1, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、绞盘、ESC" },
+          { model:"EQ2068FYY6J-X35", price:526520, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2068FYY6J-X36", price:575800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:1, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热、涉水" },
+          { model:"EQ2068FYY6J-X37", price:581300, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:1, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、中央充放气、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068FYY6J-X38", price:588300, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:1, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、中央充放气、碰撞预警、夜视、燃油加热、防风沙" },
+          { model:"EQ2068FYY6J-X39", price:559300, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:1, gen:0, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：绞盘、ESC、碰撞预警、夜视、燃油加热、防风沙" },
+          { model:"EQ2068FYY6J-X40", price:521800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068FYY6J-X41", price:605800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:1, night:1, fcw:1, wade:1, content:"标配：双发电机、ESC、中央充放气、碰撞预警、夜视、燃油加热、涉水" },
+          { model:"EQ2068FYY6J-X42", price:553800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:0, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068FYY6J-X43", price:534800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:0, esc:1, center:0, night:0, fcw:0, wade:0, content:"标配：ESC、燃油加热" },
+          { model:"EQ2068FYY6J-X44", price:"待定", type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:1, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、中央充放气、碰撞预警、夜视、燃油加热、防风沙" },
+      // M20 双排底盘 EQ2068HYY6J-X (53 个)
+          { model:"EQ2068HYY6J-X01", price:551800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068HYY6J-X02", price:574800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:1, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、绞盘、燃油加热" },
+          { model:"EQ2068HYY6J-X03", price:557800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2068HYY6J-X04", price:574800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:0, gen:0, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X05", price:580800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X06", price:589800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:1, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、绞盘、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X07", price:580800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X09", price:568800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：绞盘、燃油加热" },
+          { model:"EQ2068HYY6J-X10", price:557800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2068HYY6J-X14", price:578800, type:"底盘", cab:"双（5座）", tire:"MT轮胎", heat:1, winch:0, gen:0, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X15", price:584800, type:"底盘", cab:"双（5座）", tire:"MT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X16", price:593800, type:"底盘", cab:"双（5座）", tire:"MT轮胎", heat:1, winch:1, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、绞盘、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X17", price:584800, type:"底盘", cab:"双（5座）", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X19", price:610200, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:1, gen:0, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：绞盘、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X20", price:562800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:0, gen:1, esc:1, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、ESC" },
+          { model:"EQ2068HYY6J-X21", price:571800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:1, gen:1, esc:1, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、绞盘、ESC" },
+          { model:"EQ2068HYY6J-X22", price:580200, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：燃油加热" },
+          { model:"EQ2068HYY6J-X22B", price:580200, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：燃油加热" },
+          { model:"EQ2068HYY6J-X23", price:580800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X24", price:560800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：绞盘" },
+          { model:"EQ2068HYY6J-X25", price:560800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：绞盘" },
+          { model:"EQ2068HYY6J-X26", price:551800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068HYY6J-X27", price:582800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：双发电机、中央充放气" },
+          { model:"EQ2068HYY6J-X28", price:580200, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：燃油加热" },
+          { model:"EQ2068HYY6J-X29", price:580800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X30", price:589800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:1, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、绞盘、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X31", price:569200, type:"底盘", cab:"双（5座）", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:1, center:0, night:1, fcw:0, wade:0, content:"标配：双发电机、ESC、夜视" },
+          { model:"EQ2068HYY6J-X32", price:550500, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068HYY6J-X33", price:579800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:0, wade:1, content:"标配：ESC、涉水" },
+          { model:"EQ2068HYY6J-X34", price:578800, type:"底盘", cab:"双（5座）", tire:"MT轮胎", heat:1, winch:1, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、绞盘、燃油加热" },
+          { model:"EQ2068HYY6J-X35", price:551800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068HYY6J-X36", price:556800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:0, wade:0, content:"标配：ESC" },
+          { model:"EQ2068HYY6J-X37", price:544200, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068HYY6J-X38", price:563800, type:"底盘", cab:"双（5座）", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:1, wade:0, content:"标配：ESC、碰撞预警" },
+          { model:"EQ2068HYY6J-X39", price:583800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：绞盘、涉水" },
+          { model:"EQ2068HYY6J-X40", price:556800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:0, wade:0, content:"标配：ESC" },
+          { model:"EQ2068HYY6J-X41", price:594800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:1, gen:1, esc:1, center:0, night:0, fcw:0, wade:1, content:"标配：双发电机、绞盘、ESC、涉水" },
+          { model:"EQ2068HYY6J-X42", price:574800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2068HYY6J-X43", price:583800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:1, gen:0, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：绞盘、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X44", price:583800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：绞盘、涉水" },
+          { model:"EQ2068HYY6J-X45", price:579800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:1, winch:1, gen:1, esc:1, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机、绞盘、ESC、燃油加热" },
+          { model:"EQ2068HYY6J-X46", price:583500, type:"底盘", cab:"双（5座）", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:1, wade:1, content:"标配：ESC、碰撞预警、涉水" },
+          { model:"EQ2068HYY6J-X46A", price:583500, type:"底盘", cab:"双（5座）", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:1, wade:1, content:"标配：ESC、碰撞预警、涉水" },
+          { model:"EQ2068HYY6J-X47", price:610800, type:"底盘", cab:"双（5座）", tire:"MT轮胎", heat:1, winch:0, gen:0, esc:1, center:1, night:1, fcw:1, wade:0, content:"标配：ESC、中央充放气、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X48", price:605800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:1, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热、涉水" },
+          { model:"EQ2068HYY6J-X49", price:"待定", type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068HYY6J-X50", price:584800, type:"底盘", cab:"双排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:1, wade:1, content:"标配：ESC、碰撞预警、涉水" },
+          { model:"EQ2068HYY6J-X51", price:584800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:1, wade:1, content:"标配：ESC、碰撞预警、涉水" },
+          { model:"EQ2068HYY6J-X52", price:635800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:1, night:1, fcw:1, wade:1, content:"标配：双发电机、ESC、中央充放气、碰撞预警、夜视、燃油加热、涉水" },
+          { model:"EQ2068HYY6J-X53", price:568800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：绞盘、燃油加热" },
+          { model:"EQ2068HYY6J-X54", price:574800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2068HYY6J-X55", price:583800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:1, gen:0, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：绞盘、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-X56", price:551800, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+      // M20 整车 EQ5048XDYYY6D + EQ5068XGJYY6D (8 个)
+          { model:"EQ5048XDYYY6D-X01", price:595800, type:"整车", cab:"双（5座）", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ5048XDYYY6D-X02", price:601800, type:"整车", cab:"双（5座）", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ5048XDYYY6D-X03", price:601800, type:"整车", cab:"双（5座）", tire:"MT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ5048XDYYY6D-X04", price:618800, type:"整车", cab:"双（5座）", tire:"AT轮胎", heat:1, winch:0, gen:0, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ5048XDYYY6D-X05", price:624800, type:"整车", cab:"双（5座）", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ5048XDYYY6D-X06", price:624800, type:"整车", cab:"双（5座）", tire:"MT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ5048XDYYY6D-X07", price:657800, type:"整车", cab:"双（5座）", tire:"MT轮胎", heat:1, winch:1, gen:0, esc:1, center:1, night:1, fcw:1, wade:0, content:"标配：绞盘、ESC、中央充放气、碰撞预警、夜视、燃油加热、防风沙" },
+          { model:"EQ5068XGJYY6D", price:611700, type:"整车", cab:"双排", tire:"MT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:0, wade:0, content:"标配：ESC" },
+  ],
+
+  /* ========== M50 (EQ2063-X) ========== */
+  M50: [
+      // M50 单排底盘 EQ2063EYY6J / EQ2063EYY6J3 (29 个)
+          { model:"EQ2063EYY6J-X01", price:700000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063EYY6J-X02", price:672000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：拉力绞盘" },
+          { model:"EQ2063EYY6J-X03", price:681000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气" },
+          { model:"EQ2063EYY6J-X04", price:671000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：油路加热" },
+          { model:"EQ2063EYY6J-X05", price:690000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气、拉力绞盘" },
+          { model:"EQ2063EYY6J-X06", price:692000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、拉力绞盘" },
+          { model:"EQ2063EYY6J-X07", price:663000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2063EYY6J-X08", price:696000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、冷却水加热锅炉" },
+          { model:"EQ2063EYY6J-X09", price:706000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:1, gen:1, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、双发电机" },
+          { model:"EQ2063EYY6J-X11", price:683000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2063EYY6J-X13", price:669000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2063EYY6J3-X01A", price:725000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063EYY6J3-X02A", price:697000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：拉力绞盘" },
+          { model:"EQ2063EYY6J3-X03A", price:706000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气" },
+          { model:"EQ2063EYY6J3-X04A", price:696000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：油路加热" },
+          { model:"EQ2063EYY6J3-X05A", price:715000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气、拉力绞盘" },
+          { model:"EQ2063EYY6J3-X06A", price:717000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、拉力绞盘" },
+          { model:"EQ2063EYY6J3-X07A", price:688000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2063EYY6J3-X08A", price:721000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、冷却水加热锅炉" },
+          { model:"EQ2063EYY6J3-X09A", price:731000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:1, gen:1, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、双发电机" },
+          { model:"EQ2063EYY6J3-X11A", price:718000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2063EYY6J3-X13A", price:694000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2063EYY6J3-X15A", price:761000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:1, gen:1, esc:0, center:1, night:0, fcw:0, wade:1, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、双发电机、涉水" },
+          { model:"EQ2063EYY6J3-X16A", price:757000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:0, gen:1, esc:0, center:1, night:0, fcw:0, wade:1, content:"标配：仿皮座椅、中央充放气、油路加热、双发电机、冷却水加热锅炉、涉水" },
+          { model:"EQ2063EYY6J3-X17A", price:688000, type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2063EYY6J3-X18A", price:730000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、冷却水加热锅炉" },
+          { model:"EQ2063EYY6J3-X01B", price:720000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063EYY6J3-X02B", price:725000, type:"底盘", cab:"单排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063EYY6J3-X04B", price:"待定", type:"底盘", cab:"单排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：拉力绞盘、涉水" },
+      // M50 双排底盘 EQ2063MYY6J / EQ2063MYY6J3 (36 个)
+          { model:"EQ2063MYY6J-X01", price:710000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063MYY6J-X02", price:682000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：拉力绞盘" },
+          { model:"EQ2063MYY6J-X03", price:691000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气" },
+          { model:"EQ2063MYY6J-X04", price:681000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：油路加热" },
+          { model:"EQ2063MYY6J-X05", price:700000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气、拉力绞盘" },
+          { model:"EQ2063MYY6J-X06", price:702000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、拉力绞盘" },
+          { model:"EQ2063MYY6J-X07", price:673000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2063MYY6J-X08", price:706000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、冷却水加热锅炉" },
+          { model:"EQ2063MYY6J-X09", price:716000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:1, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、双发电机" },
+          { model:"EQ2063MYY6J-X11", price:693000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2063MYY6J-X13", price:679000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2063MYY6J-X15", price:701000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热" },
+          { model:"EQ2063MYY6J3-X01A", price:735000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063MYY6J3-X02A", price:707000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：拉力绞盘" },
+          { model:"EQ2063MYY6J3-X03A", price:716000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气" },
+          { model:"EQ2063MYY6J3-X04A", price:706000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：油路加热" },
+          { model:"EQ2063MYY6J3-X05A", price:725000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气、拉力绞盘" },
+          { model:"EQ2063MYY6J3-X06A", price:727000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、拉力绞盘" },
+          { model:"EQ2063MYY6J3-X07A", price:698000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2063MYY6J3-X08A", price:731000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、冷却水加热锅炉" },
+          { model:"EQ2063MYY6J3-X09A", price:741000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:1, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、双发电机" },
+          { model:"EQ2063MYY6J3-X11A", price:728000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2063MYY6J3-X13A", price:704000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2063MYY6J3-X15A", price:771000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:1, esc:0, center:1, night:0, fcw:0, wade:1, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、双发电机、涉水" },
+          { model:"EQ2063MYY6J3-X16A", price:767000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:1, esc:0, center:1, night:0, fcw:0, wade:1, content:"标配：仿皮座椅、中央充放气、油路加热、双发电机、冷却水加热锅炉、涉水" },
+          { model:"EQ2063MYY6J3-X17A", price:711000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：油路加热、冷却水加热锅炉" },
+          { model:"EQ2063MYY6J3-X18A", price:740000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、冷却水加热锅炉" },
+          { model:"EQ2063MYY6J3-X19A", price:735000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063MYY6J3-X20A", price:720000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、拉力绞盘、双发电机、冷却水加热锅炉" },
+          { model:"EQ2063MYY6J3-X21A", price:726000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热" },
+          { model:"EQ2063MYY6J3-X22A", price:726000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热" },
+          { model:"EQ2063MYY6J3-X23A", price:742500, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:1, content:"标配：仿皮座椅、中央充放气、油路加热、涉水" },
+          { model:"EQ2063MYY6J3-X24A", price:713000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：拉力绞盘、双发电机" },
+          { model:"EQ2063MYY6J3-X01B", price:730000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063MYY6J3-X02B", price:735000, type:"底盘", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063MYY6J3-X03B", price:752000, type:"底盘", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:1, content:"标配：仿皮座椅、中央充放气、拉力绞盘、涉水" },
+      // M50 整车 & 三类底盘 (38 个)
+          { model:"EQ2063EYY6D-X01", price:720000, type:"整车", cab:"单排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063EYY6D-X02", price:692000, type:"整车", cab:"单排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：拉力绞盘" },
+          { model:"EQ2063EYY6D-X03", price:701000, type:"整车", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气" },
+          { model:"EQ2063EYY6D-X04", price:691000, type:"整车", cab:"单排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：油路加热" },
+          { model:"EQ2063EYY6D-X05", price:710000, type:"整车", cab:"单排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气、拉力绞盘" },
+          { model:"EQ2063EYY6D-X06", price:712000, type:"整车", cab:"单排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、拉力绞盘" },
+          { model:"EQ2063EYY6D-X07", price:683000, type:"整车", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2063EYY6D-X08", price:716000, type:"整车", cab:"单排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、冷却水加热锅炉" },
+          { model:"EQ2063EYY6D-X09", price:726000, type:"整车", cab:"单排", tire:"305/80R18", heat:1, winch:1, gen:1, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、双发电机" },
+          { model:"EQ2063EYY6D-X11", price:703000, type:"整车", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2063EYY6D-X13", price:689000, type:"整车", cab:"单排", tire:"305/80R18", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2063EYY6J-X01S", price:414600, type:"三类底盘", cab:"无", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：油路加热" },
+          { model:"EQ2063MYY6D-X01", price:728000, type:"整车", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063MYY6D-X02", price:700000, type:"整车", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：拉力绞盘" },
+          { model:"EQ2063MYY6D-X03", price:709000, type:"整车", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气" },
+          { model:"EQ2063MYY6D-X04", price:699000, type:"整车", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：油路加热" },
+          { model:"EQ2063MYY6D-X05", price:718000, type:"整车", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：中央充放气、拉力绞盘" },
+          { model:"EQ2063MYY6D-X06", price:720000, type:"整车", cab:"双排", tire:"305/80R18", heat:0, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、拉力绞盘" },
+          { model:"EQ2063MYY6D-X07", price:691000, type:"整车", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2063MYY6D-X08", price:723000, type:"整车", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、冷却水加热锅炉" },
+          { model:"EQ2063MYY6D-X09", price:732000, type:"整车", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:1, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、双发电机" },
+          { model:"EQ2063MYY6D-X11", price:711000, type:"整车", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2063MYY6D-X13", price:697000, type:"整车", cab:"双排", tire:"305/80R18", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2063XXY6D-X10", price:728800, type:"整车", cab:"低（2+2）", tire:"305/80R18（旧轮辋）", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063XXY6D-X11", price:728800, type:"整车", cab:"低（2+4）", tire:"305/80R18（旧轮辋）", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063XXY6D-X01", price:748800, type:"整车", cab:"中（2+2）", tire:"305/80R18（旧轮辋）", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ2063XXY6D-X02", price:748800, type:"整车", cab:"中（2+4）", tire:"305/80R18（旧轮辋）", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ5040XJAYY6D1-X10", price:728800, type:"整车", cab:"低（2+2）", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ5040XJAYY6D1-X11", price:728800, type:"整车", cab:"低（2+4）", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ5040XJAYY6D1-X01", price:748800, type:"整车", cab:"中（2+2）", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ5040XJAYY6D1-X02", price:748800, type:"整车", cab:"中（2+4）", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ5040XDYYY6D-X10", price:728800, type:"整车", cab:"低（2+2）", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ5040XDYYY6D-X11", price:728800, type:"整车", cab:"低（2+4）", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ5040XDYYY6D-X12", price:748800, type:"整车", cab:"低（2+2）", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ5040XJXYY6D-X01A", price:"暂无", type:"整车", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘" },
+          { model:"EQ5040XJXYY6D-X02A", price:"暂无", type:"整车", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热、冷却水加热锅炉" },
+          { model:"EQ5040XJXYY6D-X03A", price:"暂无", type:"整车", cab:"双排", tire:"305/80R18", heat:1, winch:0, gen:0, esc:0, center:1, night:0, fcw:0, wade:0, content:"标配：仿皮座椅、中央充放气、油路加热" },
+          { model:"EQ5040XJXYY6D-X04A", price:"暂无", type:"整车", cab:"双排", tire:"305/80R18", heat:1, winch:1, gen:0, esc:0, center:1, night:0, fcw:0, wade:1, content:"标配：仿皮座椅、中央充放气、油路加热、拉力绞盘、涉水" },
+  ],
+
+  /* ========== M20 轻量化 (EQ2068-Y, 企划参考价) ========== */
+  M20L: [
+          { model:"EQ2068FYY6J-Y01", price:494600, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2068FYY6J-Y02", price:510300, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:1, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、绞盘、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068FYY6J-Y03", price:472800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068FYY6J-Y04", price:478800, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" },
+          { model:"EQ2068HYY6J-Y01", price:524600, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2068HYY6J-Y03", price:524600, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:1, content:"标配：涉水" },
+          { model:"EQ2068HYY6J-Y05", price:502300, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：基础车型" },
+          { model:"EQ2068HYY6J-Y02", price:544300, type:"底盘", cab:"双（5座）", tire:"AT轮胎", heat:1, winch:1, gen:1, esc:1, center:0, night:1, fcw:1, wade:0, content:"标配：双发电机、绞盘、ESC、碰撞预警、夜视、燃油加热" },
+          { model:"EQ2068HYY6J-Y04", price:508300, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:1, esc:0, center:0, night:0, fcw:0, wade:0, content:"标配：双发电机" }
+  ],
+
+  /* ========== X62 森消 (EQ2078-Y, 财务指导价) ========== */
+  X62: [
+          { model:"EQ2078FYY6J1-Y101", price:"待定", type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:1, gen:1, esc:1, center:0, night:0, fcw:1, wade:0, content:"标配：双发电机、绞盘、ESC、碰撞预警、燃油加热" },
+          { model:"EQ2078FYY6J1-Y102", price:499700, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:1, fcw:1, wade:1, content:"标配：双发电机、ESC、碰撞预警、夜视、燃油加热、涉水" },
+          { model:"EQ2078FYY6J1-Y103", price:492700, type:"底盘", cab:"单排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:0, fcw:1, wade:1, content:"标配：双发电机、ESC、碰撞预警、燃油加热、涉水" },
+          { model:"EQ2078FYY6J1-Y104", price:452400, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:1, wade:0, content:"标配：ESC、碰撞预警" },
+          { model:"EQ2078FYY6J1-Y105", price:462700, type:"底盘", cab:"单排", tire:"AT轮胎", heat:0, winch:1, gen:0, esc:1, center:0, night:0, fcw:1, wade:0, content:"标配：绞盘、ESC、碰撞预警" },
+          { model:"EQ2078HYY6J1-Y101", price:"待定", type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:0, fcw:1, wade:0, content:"标配：双发电机、ESC、碰撞预警、燃油加热" },
+          { model:"EQ2078HYY6J1-Y102", price:538700, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:1, gen:1, esc:1, center:0, night:1, fcw:1, wade:1, content:"标配：双发电机、绞盘、ESC、碰撞预警、夜视、燃油加热、涉水" },
+          { model:"EQ2078HYY6J1-Y103", price:522700, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:0, gen:1, esc:1, center:0, night:0, fcw:1, wade:1, content:"标配：双发电机、ESC、碰撞预警、燃油加热、涉水" },
+          { model:"EQ2078HYY6J1-Y104", price:525700, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:1, gen:0, esc:1, center:0, night:0, fcw:1, wade:1, content:"标配：绞盘、ESC、碰撞预警、燃油加热、涉水" },
+          { model:"EQ2078HYY6J1-Y105", price:483700, type:"底盘", cab:"双排", tire:"AT轮胎", heat:0, winch:0, gen:0, esc:1, center:0, night:0, fcw:1, wade:0, content:"标配：ESC、碰撞预警" },
+          { model:"EQ2078HYY6J1-Y106", price:500700, type:"底盘", cab:"双排", tire:"AT轮胎", heat:1, winch:1, gen:0, esc:1, center:0, night:0, fcw:1, wade:0, content:"标配：绞盘、ESC、碰撞预警、燃油加热" }
+  ]
+};
+
+/* ================= 选装项配置 ================= */
+const optionSets = {
+  M20: [
+    { name:"燃油加热", price:8000 }, { name:"绞盘", price:9000 },
+    { name:"双发电机", price:6000 }, { name:"ESC电子稳定系统", price:5000 },
+    { name:"FCW/LDW/PCW预警系统", price:3000 }, { name:"夜视系统", price:7000 },
+    { name:"1.2m涉水装置", price:25000 }, { name:"中央充放气", price:30000 },
+    { name:"防风沙配置", price:5000 }, { name:"双油箱210L", price:9300 },
+    { name:"房车弹簧", price:500 }, { name:"软悬置", price:2000 },
+    { name:"通舱", price:0 }, { name:"舒适座椅", price:0 },
+    { name:"仿皮座椅", price:1000 }, { name:"副仪表板", price:3000 },
+    { name:"中部侧标志灯", price:0 }, { name:"轮辋亮漆版", price:0 },
+    { name:"220V插座", price:500 }, { name:"绞盘型前保险杠", price:0 },
+    { name:"取力器变速箱", price:25000 }, { name:"液体加热器", price:0 },
+    { name:"电源开关", price:0 }, { name:"105L油箱", price:-2700 },
+    { name:"AT轮胎", price:0 }
+  ],
+  M50: [
+    { name:"皮质座椅", price:2000 }, { name:"中央充放气系统", price:18000 },
+    { name:"冷却水加热锅炉", price:5000 }, { name:"1.2m涉水", price:20000 },
+    { name:"1.5m涉水", price:30000 }, { name:"燃油加热系统", price:8000 },
+    { name:"拉力绞盘 (35kN)", price:9000 }, { name:"双发电机", price:6000 },
+    { name:"整车/底盘差价 (单排)", price:20000 }, { name:"整车/底盘差价 (双排)", price:18000 },
+    { name:"拉力绞盘 (50kN)", price:0 }, { name:"单双排差价", price:10000 },
+    { name:"MT/AT差价", price:20000 }
+  ],
+  M20L: [
+    { name:"燃油加热", price:8000 }, { name:"绞盘", price:9000 },
+    { name:"双发电机", price:6000 }, { name:"ESC", price:5000 },
+    { name:"夜视", price:7000 }, { name:"涉水1.2m", price:25000 },
+    { name:"中央充放气", price:30000 }
+  ],
+  X62: [
+    { name:"燃油加热", price:8000 }, { name:"绞盘", price:9000 },
+    { name:"双发电机", price:6000 }, { name:"ESC", price:5000 },
+    { name:"预警系统", price:3000 }, { name:"1.1m涉水", price:25000 },
+    { name:"高压发电机", price:0 }
+  ]
+};
+
+let currentSeries = 'M20';
+let currentList = [...allCars.M20];
+
+function switchSeries(series) {
+  currentSeries = series;
+  currentList = [...allCars[series]];
+  renderOptions();
+  renderList();
+  document.querySelectorAll('.series-tab button').forEach(btn => btn.classList.remove('active'));
+  document.querySelector('.series-tab button[onclick*="' + series + '"]').classList.add('active');
+}
+
+function renderOptions() {
+  const container = document.getElementById('opt_container');
+  container.innerHTML = '';
+  optionSets[currentSeries].forEach((opt, i) => {
+    const priceStr = opt.price > 0 ? ' +' + opt.price.toLocaleString() : (opt.price < 0 ? ' ' + opt.price.toLocaleString() : '');
+    container.innerHTML += '<div class="checkbox"><input type="checkbox" id="opt_' + i + '" data-price="' + opt.price + '" onchange="calcTotal()"><span>' + opt.name + priceStr + '</span></div>';
+  });
+}
+
+function calcTotal() {
+  let total = 0;
+  document.querySelectorAll('#opt_container input:checked').forEach(el => {
+    if (!el.disabled) total += +el.dataset.price;
+  });
+  document.getElementById('opt_total').innerText = total.toLocaleString();
+  renderList();
+}
+
+const stdMap = { heat:'f_heat', winch:'f_winch', gen:'f_gen', esc:'f_esc', center:'f_center', night:'f_night', fcw:'f_fcw', wade:'f_wade' };
+
+function syncOptions(car) {
+  if (!car) return;
+  Object.keys(stdMap).forEach(type => {
+    const cb = document.getElementById(stdMap[type]);
+    if (cb) cb.checked = car[type] === 1;
+  });
+  document.querySelectorAll('#opt_container input').forEach(el => {
+    const optName = el.parentElement.querySelector('span').textContent;
+    Object.keys(stdMap).forEach(type => {
+      if (car[type] === 1) {
+        // Disable option if it matches a standard feature
+        const names = { heat:['燃油加热'], winch:['绞盘','拉力绞盘'], gen:['双发电机'],
+          esc:['ESC','ESC电子稳定系统'], center:['中央充放气','中央充放气系统'],
+          night:['夜视','夜视系统'], fcw:['预警系统','FCW/LDW/PCW预警系统'], wade:['涉水','1.2m涉水','1.1m涉水','1.5m涉水','1.2m涉水装置'] };
+        (names[type] || []).forEach(n => { if (optName.includes(n)) el.disabled = true; });
+      }
+    });
+  });
+}
+
+function renderList() {
+  const optTotal = +document.getElementById('opt_total').innerText.replace(/,/g, '') || 0;
+  const dom = document.getElementById('list');
+  if (currentList.length === 0) { dom.innerHTML = '<div class="empty">暂无匹配车型</div>'; return; }
+
+  let html = '';
+  currentList.forEach((car, index) => {
+    const base = typeof car.price === 'number' ? car.price : 0;
+    const final = base + optTotal;
+    const pDisp = typeof car.price === 'number' ? car.price.toLocaleString() + ' 元' : car.price;
+    const fDisp = typeof car.price === 'number' ? final.toLocaleString() + ' 元' : '价格待公布';
+    html += '<div class="car-card" onclick="openModal(currentList[' + index + '])">';
+    html += '<h4>' + car.model + '</h4>';
+    html += '<div class="info">' + car.type + ' | ' + car.cab + ' | ' + car.tire + '</div>';
+    html += '<div class="price">基础价：' + pDisp + '</div>';
+    html += '<div class="final">最终价：' + fDisp + '</div>';
+    html += '<div style="margin-top:8px">';
+    if (car.heat) html += '<span class="label">燃油加热</span>';
+    if (car.winch) html += '<span class="label">绞盘</span>';
+    if (car.gen) html += '<span class="label">双发电机</span>';
+    if (car.esc) html += '<span class="label">ESC</span>';
+    if (car.center) html += '<span class="label label-center">中央充放气</span>';
+    if (car.night) html += '<span class="label">夜视</span>';
+    if (car.fcw) html += '<span class="label">碰撞预警</span>';
+    if (car.wade) html += '<span class="label">涉水</span>';
+    html += '</div></div>';
+  });
+  dom.innerHTML = html;
+  if (currentList.length === 1) syncOptions(currentList[0]);
+}
+
+function search() {
+  const f = {
+    chassis: document.getElementById('f_chassis').checked, whole: document.getElementById('f_whole').checked,
+    cab1: document.getElementById('f_cab1').checked, cab2: document.getElementById('f_cab2').checked,
+    cab3: document.getElementById('f_cab3').checked,
+    heat: document.getElementById('f_heat').checked, winch: document.getElementById('f_winch').checked,
+    gen: document.getElementById('f_gen').checked, esc: document.getElementById('f_esc').checked,
+    center: document.getElementById('f_center').checked, night: document.getElementById('f_night').checked,
+    fcw: document.getElementById('f_fcw').checked, wade: document.getElementById('f_wade').checked
+  };
+  currentList = allCars[currentSeries].filter(x => {
+    if (f.chassis && x.type !== '底盘' && !x.type.includes('三类')) return false;
+    if (f.whole && x.type !== '整车') return false;
+    if (f.cab1 && x.cab !== '单排') return false;
+    if (f.cab2 && x.cab !== '双排') return false;
+    if (f.cab3 && x.cab !== '双 (5座)') return false;
+    if (f.heat && x.heat !== 1) return false;
+    if (f.winch && x.winch !== 1) return false;
+    if (f.gen && x.gen !== 1) return false;
+    if (f.esc && x.esc !== 1) return false;
+    if (f.center && x.center !== 1) return false;
+    if (f.night && x.night !== 1) return false;
+    if (f.fcw && x.fcw !== 1) return false;
+    if (f.wade && x.wade !== 1) return false;
+    return true;
+  });
+  renderList();
+}
+
+function resetAll() {
+  document.querySelectorAll('input').forEach(el => { el.checked = false; el.disabled = false; });
+  document.getElementById('opt_total').innerText = '0';
+  currentList = [...allCars[currentSeries]];
+  renderList();
+}
+
+function openModal(car) {
+  const pDisp = typeof car.price === 'number' ? car.price.toLocaleString() + ' 元' : car.price;
+  document.getElementById('modalBody').innerHTML = '<h2>' + car.model + '</h2>' +
+    '<div class="modal-line"><b>类型：</b>' + car.type + '</div>' +
+    '<div class="modal-line"><b>驾驶室：</b>' + car.cab + '</div>' +
+    '<div class="modal-line"><b>轮胎：</b>' + car.tire + '</div>' +
+    '<div class="modal-line"><b>基础价：</b>' + pDisp + '</div>' +
+    '<div class="modal-title">标准配置</div>' +
+    '<div style="white-space:pre-line;background:#f8f9fa;padding:12px;border-radius:6px;">' + car.content + '</div>';
+  document.getElementById('carModal').style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('carModal').style.display = 'none'; }
+
+window.onload = () => { renderOptions(); renderList(); };
+</script>
+</body>
+</html>
